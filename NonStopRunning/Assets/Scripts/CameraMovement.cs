@@ -45,34 +45,45 @@ public class CameraMovement : MonoBehaviour {
 	public float acceleratorSpeed;
 	private float velocity;
 	private Vector2 target;
+	private Vector2 leftTarget;
+	private Vector2 rightTarget;
+	public float targetSideDistance;
+	public GameObject m_target;
+	public GameObject m_leftTarget;
+	public GameObject m_rightTarget;
 
 	public Vector2 offSet;
 	void Awake () {
 		mainChar = GameObject.Find ("MC");
 		mainCamera = gameObject;
-		target = (Vector2)mainCamera.transform.position;
+
 
 	}
 
 	void FixedUpdate () {
-		mcFacingDirection = mainChar.GetComponent<CharController> ().facingDirection;
-		Vector2 offSetUpdated = new Vector2 (offSet.x * mcFacingDirection, offSet.y);
-
 
 		CameraUpdate ();
 
-		Debug.DrawLine ((Vector2)mainChar.transform.position, (Vector2)mainChar.transform.position + offSetUpdated, Color.red);
-		Debug.DrawLine (target, (Vector2)mainChar.transform.position + offSetUpdated, Color.blue);
+		UpdateDebug ();
+
 	}
 
 
 	void CameraUpdate()
 	{
-		if (velocity < mainChar.GetComponent<Rigidbody2D>().velocity.x * 1.5f && Vector2.Distance(target, mainChar.transform.position) < 0.2f) {
-			velocity = velocity + acceleratorSpeed * Time.fixedDeltaTime;
-			target = target + Vector2.right * velocity;
-			print (target);
-		}
+		mcFacingDirection = mainChar.GetComponent<CharController> ().facingDirection;
+		Vector2 offSetUpdated = new Vector2 (offSet.x * mcFacingDirection, offSet.y);
+
+		target = (Vector2)mainChar.transform.position + offSetUpdated;
+		leftTarget = target + Vector2.right * targetSideDistance;
+		rightTarget = target + Vector2.left * targetSideDistance;
+	}
+
+	void UpdateDebug()
+	{
+		m_target.transform.position = (Vector3)target;
+		m_leftTarget.transform.position = (Vector3)leftTarget;
+		m_rightTarget.transform.position = (Vector3)rightTarget;
 	}
 
 
