@@ -41,15 +41,18 @@ public class CharController : MonoBehaviour {
 		jumpTrigger = false;
 	}
 
-	void Update() 
+	public void CharUpdate() 
 	{
 		if (Input.GetButtonDown("Jump"))
 		{
 			jumpTrigger = true;
 		}
+		if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began) {
+			jumpTrigger = true;
+		}
 	}
 
-	void FixedUpdate()
+	public void CharFixedUpdate()
 	{
 		StateUpdate ();
 		ParameterUpdate ();
@@ -110,7 +113,7 @@ public class CharController : MonoBehaviour {
 		if (collidingRight && climbing) {
 			Vector2 rayCast = (Vector2)collidingRightPoint [collidingRightPoint.Count - 1] - (Vector2)transform.position;
 			if (justClimbed) {
-				rb2d.velocity = Vector3.zero;
+				rb2d.velocity = Vector2.zero;
 			}
 			moveForce = rayCast / rayCast.magnitude * gravityValue;
 			if (rb2d.velocity.magnitude < wallSlidingSpeed) {
@@ -119,6 +122,7 @@ public class CharController : MonoBehaviour {
 		}
 		//calculate all forces when on the ground
 		if (collidingBottom) {
+
 			foreach (var collidingPoint in collidingBottomPoint) {
 				Vector2 rayCast = (Vector2)collidingPoint - (Vector2)transform.position;
 				moveForce = rayCast.normalized * gravityValue;
@@ -177,7 +181,7 @@ public class CharController : MonoBehaviour {
 		rb2d.AddForce (moveForce);
 
 		if (onCorner) {
-			rb2d.isKinematic = true;
+			//rb2d.isKinematic = true;
 		}
 
 	}

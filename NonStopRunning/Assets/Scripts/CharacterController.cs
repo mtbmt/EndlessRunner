@@ -3,214 +3,198 @@ using System.Collections;
 
 public class CharacterController : MonoBehaviour {
 
-
 	public int facingDirection; // right = 1, left = -1
 	[HideInInspector] public bool jumpTrigger;
-	public int jumpCount;
-	public bool grounded;
-	public bool climbing;
 	public float moveSpeed;
+	public float acceleration;
+	public float currentMoveSpeed;
 	public float jumpForce;
 	public float wallSlidingSpeed;
-	public bool collidingLeft;
-	public float collidingLeftAngle;
-	public bool collidingRight;
-	public float collidingRightAngle;
-	public bool onCorner;
+	public int jumpCount;
+	public int maxJumpCount;
+
+	public Rigidbody2D rb2d;
+	public BoxCollider2D boxCollider;
+	public LayerMask groundMask;
 
 
-	private float kinematicCheckingTime;
 
-	private Rigidbody2D rb2d;
+	private int numberOfRaycast;
+	private RaycastHit2D[] bottomHits;
+	private RaycastHit2D[] aheadHits;
+	private float colliderSizeX;
+	private float colliderSizeY;
 
-	void Awake() 
+	public bool grounded;
+
+	public enum CharacterState {Idle, Running, Jumping, Falling, Sliding};
+	public CharacterState charState;
+
+
+
+
+
+	void Awake()
 	{
-		rb2d = GetComponent<Rigidbody2D>();
-		rb2d.velocity = new Vector2 (moveSpeed, rb2d.velocity.y);
-		jumpCount = 0;
-		facingDirection = 1;
-		jumpTrigger = false;
-		grounded = false;
-		kinematicCheckingTime = Time.time;
+		rb2d = GetComponent<Rigidbody2D> ();
+		boxCollider = GetComponent<BoxCollider2D> ();
+		numberOfRaycast = 4;
+		bottomHits = new RaycastHit2D[numberOfRaycast];
+		aheadHits = new RaycastHit2D[numberOfRaycast];
+		colliderSizeX = boxCollider.size.x * transform.localScale.x;
+		colliderSizeY = boxCollider.size.y * transform.localScale.y;
+		rb2d.velocity = Vector2.down * 10f;
+
+
 
 	}
 
-	// Update is called once per frame
-	void Update() 
+	void FixedUpdate()
 	{
+		InputControl ();
+
+		RayHitUpdate ();
+
+		StateUpdate ();
+
+		if (jumpTrigger) {
+			Jump ();
+		}
+
+		MoveControl ();
+
+
+
+	}
+
+
+
+
+	void InputControl()
+	{
+		if (Mathf.Abs(Input.GetAxis("Horizontal")) != 0) {
+			rb2d.AddForce (Vector2.right * Input.GetAxis ("Horizontal") * Time.fixedDeltaTime * 100f);
+		}
 
 		if (Input.GetButtonDown("Jump"))
 		{
 			jumpTrigger = true;
 		}
 
-			
 	}
-	void FixedUpdate()
-	{
-		CharacterStateUpdate ();
-		//MoveControl ();
-
-		if (jumpTrigger)
-		{
-			Jump ();
-		}
-
-
-
-
-	}
-
-
-	void CharacterStateUpdate()
-	{
-
-
-
-		LayerMask layer = LayerMask.GetMask ("ground");
-		float mcRadius = gameObject.GetComponent<CircleCollider2D> ().radius;
-
-
-
-
-		RaycastHit2D botHit = Physics2D.CircleCast (transform.position, mcRadius, Vector2.down, mcRadius * 0.3f, layer.value);
-		RaycastHit2D rightHit = Physics2D.CircleCast(transform.position, mcRadius, Vector2.right, mcRadius * 0.3f, layer.value);
-		RaycastHit2D circleToLeft = Physics2D.CircleCast(transform.position, mcRadius, Vector2.left, mcRadius * 0.3f, layer.value);
-
-		if (botHit) {
-			Debug.DrawLine (transform.position, botHit.point, Color.red);
-			float collidePointToDownAngle = Vector2.Angle (botHit.point - (Vector2)transform.position, Vector2.down);
-
-			if (collidePointToDownAngle <= 60 && Vector2.Distance(transform.position, rightHit.point) + Time.deltaTime *moveSpeed <= mcRadius) {
-				grounded = true;
-			} else {
-				collidingRight = false;
-			}
-
-		} else {
-			grounded = false;
-		}
-
-		if (rightHit) {
-			Debug.DrawLine (transform.position, rightHit.point, Color.blue);
-			float collidePointToDownAngle = Vector2.Angle (rightHit.point - (Vector2)transform.position, Vector2.down);
-			if (collidePointToDownAngle >= 60 && rightHit.point.x > transform.position.x) {
-				collidingRightAngle = collidePointToDownAngle;
-				collidingRight = true;	
-			} else {
-				collidingRightAngle = 0;
-				collidingRight = false;
-			}
-		}
-		else {
-			collidingRight = false;
-		}
-
-		if (circleToLeft) {
-			Debug.DrawLine (transform.position, circleToLeft.point, Color.green);
-			float collidePointToDownAngle = Vector2.Angle (circleToLeft.point - (Vector2)transform.position, Vector2.down);
-			if (collidePointToDownAngle >= 60 && circleToLeft.point.x < transform.position.x) {
-				collidingLeftAngle = collidePointToDownAngle;
-				collidingLeft = true;	
-			} else {
-				collidingLeftAngle = 0;
-				collidingLeft = false;
-			}
-		} else {
-			collidingLeft = false;
-		}
-
-		if ((collidingLeft || collidingRight) && !grounded) {
-			climbing = true;
-		} else {
-			climbing = false;
-		}
-
-		if ((collidingLeft || collidingRight) && grounded) {
-			onCorner = true;
-		} else {
-			onCorner = false;
-		}
-	}
-
-
 
 
 
 	void Jump()
 	{
-
+		rb2d.AddForce (Vector2.up * jumpForce);
 		jumpTrigger = false;
-		jumpCount += 1;
-
-		if (grounded) {
-			if (onCorner) {
-				SetKinematic (false);
-				rb2d.velocity = new Vector2 (rb2d.velocity.x, 0);
-				rb2d.AddForce(new Vector2(0f, jumpForce));
-
-				//Flip
-				facingDirection = - facingDirection;
-			} else {
-				rb2d.AddForce(new Vector2(0f, jumpForce));
-				rb2d.velocity = new Vector2 (rb2d.velocity.x, rb2d.velocity.y);
-					
-			}
-
-
-		} else {
-			
-			rb2d.velocity = new Vector2 (rb2d.velocity.x, 0);
-			rb2d.AddForce(new Vector2(0f, jumpForce));
-
-			//Flip
-			facingDirection = - facingDirection;
-		}
 	}
 
 	void MoveControl()
 	{
-
-
-		float horizontalSpeed = moveSpeed * facingDirection;
-		float verticalSpeed = rb2d.velocity.y;
-
-
-		if (onCorner) {
-
-			if (!rb2d.isKinematic) {
-				SetKinematic (true);
+		//Handle whenever MC collide with ground
+		RaycastHit2D shortestBottomHit = new RaycastHit2D();
+		foreach (var hit in bottomHits) {
+			if (hit) {
+				if (!shortestBottomHit) {
+					shortestBottomHit = hit;
+				} else {
+					if (shortestBottomHit.distance > hit.distance) {
+						shortestBottomHit = hit;
+					}
+				}
 			}
-
-			horizontalSpeed = 0;
-			verticalSpeed = 0;
 		}
-		
-		if (!climbing) {
-			if (rb2d.gravityScale == 0) {
-				rb2d.gravityScale = 1;
+		float verticalVelocity = rb2d.velocity.y;
+		if (shortestBottomHit) {
+			Debug.DrawLine ((Vector3)shortestBottomHit.point + Vector3.up * shortestBottomHit.distance, (Vector3)shortestBottomHit.point, Color.cyan);
+			float minorGap = verticalVelocity * Time.fixedDeltaTime - (shortestBottomHit.distance - colliderSizeY / 2);
+			if (minorGap > 0) {
+				/// set MC position collide with the ground
 			}
-			rb2d.velocity = new Vector2 (horizontalSpeed, verticalSpeed);
-		} else {
-			rb2d.gravityScale = 0;
-			rb2d.velocity = new Vector2 (rb2d.velocity.x, - wallSlidingSpeed);
+				
+			// MOVE IT TO StateUpdate()
+			if (shortestBottomHit.distance - colliderSizeY / 2 < 0.001f) {
+				grounded = true;
+			} else {
+				grounded = false;
+			}
 		}
+
+
 
 
 	}
 
-	void SetKinematic(bool value)
+
+
+	void StateUpdate()
 	{
-		if (value) {
-			if (Time.time - kinematicCheckingTime > 0.5f) {
-				rb2d.isKinematic = true;
+		/*
+		// ground check
+		for (int i = 0; i < bottomHits.Length; i++) {
+
+			if (bottomHits[i]) {
+				//print (string.Format("{0} {1}", hit, hit.distance));
+				if (Mathf.Abs(bottomHits[i].distance - colliderSizeY/2) < 0.01f) {
+					//print (string.Format("{0} {1}", i, bottomHits[i].distance));
+				}
+			}
+		}
+		*/
+
+	}
+
+
+	void RayHitUpdate()
+	{
+
+		Vector2 boxColliderOffset = boxCollider.offset;
+		/// bottom cast
+		for (int i = 0; i < numberOfRaycast; i++) {
+			int middleIndex = numberOfRaycast / 2;
+			if (numberOfRaycast % 2 == 1) {
+				middleIndex = numberOfRaycast + 1;
 			}
 
-		} else {
+			Vector2 startPosition = (Vector2)transform.position + boxColliderOffset + new Vector2 (-boxCollider.size.x / 2 + boxCollider.size.x / (numberOfRaycast - 1) * i, 0);
+			float castDistance = boxCollider.size.y / 2 * 5f;
 
-			rb2d.isKinematic = false;
+			bottomHits [i] = Physics2D.Raycast (startPosition, Vector2.down, castDistance, groundMask);
+			if (bottomHits[i]) {
+				//Debug.DrawLine ((Vector3)startPosition, (Vector3)bottomHits[i].point, Color.cyan);
+			} else {
+				//Debug.DrawLine ((Vector3)startPosition, (Vector3)startPosition + Vector3.down * castDistance, Color.cyan);
+			}
 		}
-		kinematicCheckingTime = Time.time;	
+
+
+		/// ahead cast
+		for (int i = 0; i < numberOfRaycast; i++) {
+			int middleIndex = numberOfRaycast / 2;
+			if (numberOfRaycast % 2 == 1) {
+				middleIndex = numberOfRaycast + 1;
+			}
+
+			Vector2 startPosition = (Vector2)transform.position + boxColliderOffset + new Vector2 (0, -boxCollider.size.y / 2 + boxCollider.size.y / (numberOfRaycast - 1) * i);
+			float castDistance = boxCollider.size.x / 2 * 5f;
+			aheadHits [i] = Physics2D.Raycast (startPosition, Vector2.right, castDistance, groundMask);
+			if (aheadHits[i]) {
+				//Debug.DrawLine ((Vector3)startPosition, (Vector3)aheadHits[i].point, Color.cyan);
+			} else {
+				//Debug.DrawLine ((Vector3)startPosition, (Vector3)startPosition + Vector3.right * castDistance, Color.cyan);
+			}
+		}
+
+
+
+
+
+
+
+
+
 	}
 
 }

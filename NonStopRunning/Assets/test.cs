@@ -2,36 +2,32 @@
 using System.Collections;
 
 public class test : MonoBehaviour {
-	float lerpTime = 1f;
-	float currentLerpTime;
+	public GameObject target;
+	public float forceMax;
+	public float brakingForceMax;
+	public float brakingRange;
+	public float mcMaxSpeed;
+	public float cameraMaxSpeed;
+	public LayerMask groundMask;
+	private float currentVelocity;
 
-	float moveDistance = 10f;
+	void Awake()
+	{
 
-	Vector3 startPos;
-	Vector3 endPos;
-
-	protected void Start() {
-		startPos = transform.position;
-		endPos = transform.position + transform.up * moveDistance;
 	}
+	void Update()
+	{
+		RaycastHit2D[] allCircleCast = Physics2D.CircleCastAll (transform.position, 1 * 1.1f, Vector3.zero, 0, groundMask);
+		foreach (var hit in allCircleCast) {
+			Vector2 rayDirection = (Vector2)hit.point - (Vector2)transform.position;
+			RaycastHit2D rayCast = Physics2D.Raycast (transform.position, rayDirection, 1 * 1.1f, groundMask);
+			//Draw all contact points
+			Debug.DrawLine (transform.position, rayCast.point, Color.red);
+			float rayAngle = Vector2.Angle (rayDirection, Vector2.down);
 
-	protected void Update() {
-		//reset when we press spacebar
-		if (Input.GetKeyDown(KeyCode.Space)) {
-			currentLerpTime = 0f;
+
 		}
 
-		//increment timer once per frame
-		currentLerpTime += Time.deltaTime;
-		if (currentLerpTime > lerpTime) {
-			currentLerpTime = lerpTime;
-		}
-
-		//lerp!
-		float perc = currentLerpTime / lerpTime;
-		float t = currentLerpTime / lerpTime;
-		t = t * t * (3f - 2f * t);
-
-		transform.position = Vector3.Lerp(startPos, endPos, t);
 	}
+
 }
